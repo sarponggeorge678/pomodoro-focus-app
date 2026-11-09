@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Timer</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
+  body{
+    min-height:100vh;
+    display:flex;justify-content:center;align-items:center;
+    background:linear-gradient(135deg,#ff2e9a 0%,#7b2ff7 45%,#2e5cff 100%);
+    padding:20px;
+  }
+  .card{
+    width:360px;
+    background:linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.08));
+    backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.35);
+    border-radius:28px;
+    padding:24px 24px 22px;
+    color:white;
+    box-shadow:0 25px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.4);
+    position:relative;
+    overflow:hidden;
+  }
+  /* Glow behind clock */
+  .glow{
+    position:absolute;top:-10px;right:-10px;
+    width:220px;height:220px;
+    background:radial-gradient(circle, rgba(255,46,154,.7), transparent 70%);
+    filter:blur(10px);
+    pointer-events:none;
+  }
+  .top{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    position:relative;z-index:2;
+  }
+  .clock-wrap{position:relative;width:140px;height:130px}
+  .clock{
+    width:120px;height:120px;
+    background:#1a0f3d;
+    border:6px solid #a259ff;
+    border-radius:50%;
+    position:relative;
+    margin:10px auto 0;
+    box-shadow:0 0 25px #a259ff, inset 0 0 15px rgba(255,255,255,.2);
+  }
+  .clock::before,.clock::after{
+    content:"";position:absolute;width:10px;height:28px;
+    background:#a259ff;border-radius:10px;top:-18px;
+  }
+  .clock::before{left:12px;transform:rotate(-35deg)}
+  .clock::after{right:12px;transform:rotate(35deg)}
+  .hand{position:absolute;left:50%;top:50%;transform-origin:top center;background:white;border-radius:5px}
+  .h-hand{width:5px;height:28px;transform:translate(-50%,0) rotate(-45deg)}
+  .m-hand{width:4px;height:40px;transform:translate(-50%,0) rotate(45deg)}
+  .dot{position:absolute;width:10px;height:10px;background:#ff2e9a;border-radius:50%;left:50%;top:50%;transform:translate(-50%,-50%)}
+  .tick{position:absolute;width:3px;height:8px;background:rgba(255,255,255,.7);left:50%;top:6px}
+  .alarm-label{font-size:11px;letter-spacing:1px;opacity:.8;margin-top:4px;text-align:center}
+
+  .right{flex:1;text-align:right;padding-top:8px}
+  .time{font-size:52px;font-weight:800;line-height:1;letter-spacing:-1px;text-shadow:0 0 20px rgba(255,255,255,.5)}
+  .pill{
+    margin-top:12px;
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(0,0,0,.35);
+    border:1px solid rgba(255,255,255,.3);
+    padding:8px 12px;border-radius:20px;
+    font-size:14px;cursor:pointer;
+  }
+  .pill span{font-size:16px}
+
+  .controls{
+    display:flex;align-items:center;justify-content:center;gap:16px;
+    margin:18px 0 20px;
+  }
+  .icon-btn{
+    width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.4);
+    background:rgba(255,255,255,.15);color:white;font-size:20px;cursor:pointer;
+  }
+  .play-btn{
+    width:68px;height:68px;border-radius:50%;border:none;
+    background:linear-gradient(135deg,#b26bff,#7b2ff7);
+    color:white;font-size:28px;cursor:pointer;
+    box-shadow:0 0 25px #a259ff, 0 10px 20px rgba(0,0,0,.3);
+  }
+  .sessions{display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px;opacity:.95}
+  .progress{height:6px;background:rgba(255,255,255,.25);border-radius:20px;overflow:hidden;margin-bottom:20px}
+  .bar{height:100%;width:0%;background:linear-gradient(90deg,#ff2e9a,#ff8a00);border-radius:20px;transition:width .3s}
+
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .row{
+    background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.15);
+    border-radius:14px;padding:13px 14px;
+    display:flex;justify-content:space-between;align-items:center;
+    cursor:pointer;font-size:14px;
+  }
+  .row.active{border-color:rgba(255,255,255,.45);background:rgba(0,0,0,.4)}
+  .row b{font-weight:600}
+  .row .val{opacity:.85}
+  .row .val i{font-style:normal;opacity:.6;margin-left:4px}
+
+  .settings{margin-top:12px;display:none;gap:8px}
+  .settings.show{display:flex}
+  .settings input{flex:1;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:8px;border-radius:10px;text-align:center}
+  .settings button{background:#ff2e9a;border:none;color:white;padding:8px 14px;border-radius:10px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="glow"></div>
+
+  <div class="top">
+    <div class="clock-wrap">
+      <div class="clock">
+        <div class="hand h-hand"></div>
+        <div class="hand m-hand"></div>
+        <div class="dot"></div>
+      </div>
+      <div class="alarm-label">⏰ ALARM</div>
+    </div>
+
+    <div class="right">
+      <div class="time" id="time">25:00</div>
+      <div class="pill" onclick="toggleSettings()"><span>🍅</span> Pomodoro <span>⌄</span></div>
+    </div>
+  </div>
+
+  <div class="settings" id="settings">
+    <input type="number" id="workInput" value="25" min="1" max="120">
+    <input type="number" id="breakInput" value="5" min="1" max="60">
+    <button onclick="saveSettings()">Save</button>
+  </div>
+
+  <div class="controls">
+    <button class="icon-btn" onclick="resetTimer()">↺</button>
+    <button class="play-btn" id="playBtn" onclick="toggleTimer()">▶</button>
+  </div>
+
+  <div class="sessions"><span>Sessions</span><span id="sessionCount">0 / 4</span></div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+
+  <div class="rows">
+    <div class="row active" id="workRow" onclick="switchMode('work')">
+      <span>⚙️ &nbsp;<b>Work</b></span>
+      <span class="val"><span id="workLabel">25 min</span> <i>›</i></span>
+    </div>
+    <div class="row" id="breakRow" onclick="switchMode('break')">
+      <span>☕ &nbsp;<b>Break</b></span>
+      <span class="val"><span id="breakLabel">5 min</span> <i>›</i></span>
+    </div>
+  </div>
+</div>
+
+<script>
+let workMinutes = 25, breakMinutes = 5;
+let mode = 'work';
+let timeLeft = workMinutes * 60;
+let timer = null, isRunning = false, sessions = 0;
+
+const timeEl = document.getElementById('time');
+const playBtn = document.getElementById('playBtn');
+const bar = document.getElementById('bar');
+const sessionEl = document.getElementById('sessionCount');
+
+function update(){
+  let m = Math.floor(timeLeft/60), s = timeLeft%60;
+  timeEl.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  let total = (mode==='work'?workMinutes:breakMinutes)*60;
+  bar.style.width = ((total-timeLeft)/total*100) + '%';
+}
+function switchMode(m){
+  mode=m; clearInterval(timer); isRunning=false; playBtn.textContent='▶';
+  timeLeft = (mode==='work'?workMinutes:breakMinutes)*60;
+  document.getElementById('workRow').classList.toggle('active', mode==='work');
+  document.getElementById('breakRow').classList.toggle('active', mode==='break');
+  update();
+}
+function toggleTimer(){
+  if(isRunning){ clearInterval(timer); isRunning=false; playBtn.textContent='▶'; }
+  else{
+    isRunning=true; playBtn.textContent='⏸';
+    timer=setInterval(()=>{
+      timeLeft--; update();
+      if(timeLeft<=0){
+        clearInterval(timer); isRunning=false; playBtn.textContent='▶';
+        if(mode==='work'){ sessions++; if(sessions>4) sessions=1; sessionEl.textContent=sessions+' / 4'; alert('Work done! Take a break 🍅'); switchMode('break'); }
+        else{ alert('Break over! Back to work 💪'); switchMode('work'); }
+      }
+    },1000);
+  }
+}
+function resetTimer(){ clearInterval(timer); isRunning=false; playBtn.textContent='▶'; timeLeft=(mode==='work'?workMinutes:breakMinutes)*60; update(); }
+function toggleSettings(){ document.getElementById('settings').classList.toggle('show'); }
+function saveSettings(){
+  workMinutes = parseInt(document.getElementById('workInput').value) || 25;
+  breakMinutes = parseInt(document.getElementById('breakInput').value) || 5;
+  document.getElementById('workLabel').textContent = workMinutes+' min';
+  document.getElementById('breakLabel').textContent = breakMinutes+' min';
+  toggleSettings(); switchMode(mode);
+}
+update();
+</script>
+</body>
+</html>
